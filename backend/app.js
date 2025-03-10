@@ -4,17 +4,21 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 const mongoose = require("mongoose");
+var app = express();
 
 mongoose
-  .connect("mongodb://127.0.0.1:27017/chat-apps")
+  .connect("mongodb://127.0.0.1:27017/chatapps")
   .then(() => console.log("Connected!"));
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/users");
+const cors = require("cors");
+app.use(
+  cors({
+    origin: "http://localhost:3000", // or '*' if you want to allow all origins
+  })
+);
 
-var app = express();
-
-// view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
