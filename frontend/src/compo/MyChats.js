@@ -1,45 +1,42 @@
 import React, { useEffect, useState } from "react";
 import { Chatstate } from "../Context/ChatProvider";
-import {
-  Box,
-  Button,
-  Stack,
-  Text,
-  useToast,
-  Table,
-  Tbody,
-  Tr,
-  Td,
-} from "@chakra-ui/react";
+import { Box, Button, Stack, Text, useToast } from "@chakra-ui/react";
 import axios from "axios";
 import { AddIcon } from "@chakra-ui/icons";
 import ChatLoading from "./ChatLoading";
 import { getsender } from "../config/ChatLogics";
+import GroupChatModel from "./miscellaneous/GroupChatModel";
 
-const MyChats = () => {
+const MyChats = ({ fetchagain }) => {
   const [loguser, setloguser] = useState();
   console.log("loguser :>> ", loguser);
   const { user, setSelectedChat, SelectedChat, Chats, setChats } = Chatstate();
-  console.log("Chats sAAs:>> ", Chats);
-
   const toast = useToast();
 
+  // ✅ Load Chats from localStorage First
+  useEffect(() => {
+    const storedChats = localStorage.getItem("chats");
+    if (storedChats) {
+      setChats(JSON.parse(storedChats)); // Load cached chats
+    }
+    fetchChat(); // Always fetch latest chats
+  }, [fetchagain]); // Re-fetch when `fetchagain` changes
+
+  // ✅ Fetch Chats and Store in LocalStorage
   const fetchChat = async () => {
     try {
-      const confing = {
-        headers: {
-          Authorization: user.token,
-        },
+      const config = {
+        headers: { Authorization: user.token },
       };
-      console.log("tok", user.token);
+      console.log("Fetching chats with token:", user.token);
 
-      const { data } = await axios.get("/quickchat/fetchchat", confing);
-      setChats(data);
-      console.log("data->", data);
+      const { data } = await axios.get("/quickchat/fetchchat", config);
+      setChats(data); // Update state
+      localStorage.setItem("chats", JSON.stringify(data)); // ✅ Save to localStorage
     } catch (error) {
       toast({
-        title: "Error Occured!",
-        description: error.message + " failed to load chats",
+        title: "Error Occurred!",
+        description: "Failed to load chats: " + error.message,
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -48,13 +45,12 @@ const MyChats = () => {
     }
   };
 
+  // ✅ Load user ID from localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem("userinfo");
-
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // console.log("parsedUser.data._id :>> ", parsedUser.data._id);
         if (parsedUser.data._id) {
           setloguser(parsedUser.data._id);
         } else {
@@ -92,14 +88,17 @@ const MyChats = () => {
         <p>
           My <span style={{ color: "red" }}>C</span>hats
         </p>
-        <Button
-          display="flex"
-          fontSize={{ base: "17px", md: "10px", lg: "17px" }}
-          rightIcon={<AddIcon />}
-        >
-          New Group<span style={{ color: "red" }}>C</span>hats
-        </Button>
+        <GroupChatModel>
+          <Button
+            display="flex"
+            fontSize={{ base: "17px", md: "10px", lg: "17px" }}
+            rightIcon={<AddIcon />}
+          >
+            New Group<span style={{ color: "red" }}>C</span>hats
+          </Button>
+        </GroupChatModel>
       </Box>
+
       <Box
         display="flex"
         flexDir="column"
@@ -147,8 +146,6 @@ const MyChats = () => {
         ) : (
           <ChatLoading />
         )}
-
-        {/* Display the second chat's users inside a table */}
       </Box>
     </Box>
   );

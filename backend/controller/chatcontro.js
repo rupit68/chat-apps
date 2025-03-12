@@ -132,46 +132,72 @@ exports.createGroupchat = async function (req, res, next) {
     throw new Error(error.message);
   }
 };
-exports.renameGroup = async function (req, res, next) {
-  const { chatId, chatName } = req.body;
+exports.renameGroup = async function (req, res) {
+  try {
+    const { chatId, chatName } = req.body;
 
-  const updatedChat = await Chat.findByIdAndUpdate(
-    chatId,
-    {
-      chatName,
-    },
-    {
-      new: true,
+    console.log("Rename Request Received:", { chatId, chatName });
+
+    const updatedChat = await Chat.findByIdAndUpdate(
+      chatId,
+      { chatName },
+      { new: true }
+    )
+      .populate("users", "-password")
+      .populate("groupAdmin", "-password");
+
+    if (!updatedChat) {
+      console.log("Chat not found or rename failed");
+      return res
+        .status(404)
+        .json({ message: "Chat not found or rename failed" });
     }
-  )
-    .populate("users", "-password")
-    .populate("groupAdmin", "-password");
 
-  if (!updatedChat) {
-    res.status(404);
-    throw new Error(error.message);
-  } else {
-    res.json(updatedChat);
+    console.log("Rename Successful, sending response:", updatedChat);
+    return res.status(200).json(updatedChat); // ✅ Ensure correct status and response
+  } catch (error) {
+    console.error("Rename Group Error:", error);
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 exports.addgroup = async function (req, res, next) {
-  const { chatId, userId } = req.body;
+  try {
+    const { chatId, userId } = req.body;
+    console.log("Adding User:", userId, "to Chat:", chatId);
 
-  const added = await Chat.findByIdAndUpdate(
-    chatId,
-    {
-      $push: { users: userId },
-    },
-    { new: true }
-  )
-    .populate("users", "-password")
-    .populate("groupAdmin", "-password");
+    const chat = await Chat.findById(chatId);
+    console.log("Chat Found:", chat);
 
-  if (!added) {
-    res.status(404);
-    throw new Error(error.message);
-  } else {
-    res.json(added);
+    if (!chat) {
+      return res.status(404).json({ message: "Chat not found" });
+    }
+
+    console.log("Admin ID:", chat.groupAdmin.toString());
+    console.log("Requesting User ID:", req.user._id.toString());
+
+    if (chat.groupAdmin.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Only admins can add someone!" });
+    }
+
+    if (chat.users.includes(userId)) {
+      return res.status(400).json({ message: "User already in the group" });
+    }
+
+    chat.users.push(userId);
+    await chat.save();
+
+    const updatedChat = await Chat.findById(chatId)
+      .populate("users", "-password")
+      .populate("groupAdmin", "-password");
+
+    console.log("Updated Chat:", updatedChat);
+    return res.status(200).json(updatedChat);
+  } catch (error) {
+    console.error("Add User Error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 

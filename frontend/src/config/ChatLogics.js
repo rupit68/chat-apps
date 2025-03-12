@@ -11,3 +11,7 @@ export const getsender = (loguser, users) => {
 
   return users[0]._id === loguser._id ? users[1].name : users[1].name;
 };
+
+export const getSenderFull = (loguser, users) => {
+  return users[0]._id === loguser._id ? users[1] : users[0];
+};
